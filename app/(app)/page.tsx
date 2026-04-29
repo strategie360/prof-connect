@@ -44,11 +44,14 @@ export default async function FeedPage({
     .limit(fetchLimit)
 
   if (q) {
-    query = query.textSearch(
-      'search_vector',
-      q.trim().split(/\s+/).filter(Boolean).join(' | '),
-      { config: 'french' }
-    )
+    const tsquery = q
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((w) => w.replace(/[^\p{L}\p{N}]/gu, '') + ':*')
+      .filter((w) => w.length > 1)
+      .join(' & ')
+    if (tsquery) query = query.textSearch('search_vector', tsquery, { config: 'french' })
   }
 
   if (category) {
