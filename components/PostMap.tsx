@@ -14,8 +14,10 @@ export default function PostMap({ posts }: Props) {
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
+    let cancelled = false
 
     import('leaflet').then((L) => {
+      if (cancelled || !containerRef.current || mapRef.current) return
       // Fix icônes Leaflet (bug Webpack/Next.js)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       delete (L.Icon.Default.prototype as any)._getIconUrl
@@ -69,6 +71,7 @@ export default function PostMap({ posts }: Props) {
     })
 
     return () => {
+      cancelled = true
       mapRef.current?.remove()
       mapRef.current = null
     }
