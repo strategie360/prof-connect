@@ -1,19 +1,9 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, MapPin } from 'lucide-react'
-import dynamic from 'next/dynamic'
 import { createClient } from '@/lib/supabase/server'
 import { type Post } from '@/lib/types'
-
-// Import dynamique sans SSR (Leaflet requiert le DOM)
-const PostMap = dynamic(() => import('@/components/PostMap'), {
-  ssr: false,
-  loading: () => (
-    <div className="w-full h-full bg-slate-100 animate-pulse flex items-center justify-center text-slate-400 text-sm">
-      Chargement de la carte…
-    </div>
-  ),
-})
+import MapWrapper from '@/components/MapWrapper'
 
 export default async function MapPage() {
   const supabase = await createClient()
@@ -70,7 +60,7 @@ export default async function MapPage() {
         </div>
       ) : (
         <div className="flex-1 rounded-xl overflow-hidden border border-slate-200 shadow-sm">
-          <PostMap posts={withGeo} />
+          <MapWrapper posts={withGeo} />
         </div>
       )}
     </div>
