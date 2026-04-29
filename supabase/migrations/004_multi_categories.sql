@@ -1,5 +1,8 @@
+-- Supprimer search_vector EN PREMIER (il dépend de category_name)
+alter table public.posts drop column if exists search_vector;
+
 -- Migrer category_name (text) → category_names (text[])
-alter table public.posts add column category_names text[] default '{}';
+alter table public.posts add column if not exists category_names text[] default '{}';
 
 -- Migrer les données existantes
 update public.posts
@@ -11,7 +14,6 @@ alter table public.posts drop column if exists category_id;
 alter table public.posts drop column if exists category_name;
 
 -- Recréer le search_vector avec le tableau de catégories
-alter table public.posts drop column if exists search_vector;
 alter table public.posts
   add column search_vector tsvector
   generated always as (
