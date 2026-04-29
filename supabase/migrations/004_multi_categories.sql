@@ -13,22 +13,35 @@ update public.posts
 alter table public.posts drop column if exists category_id;
 alter table public.posts drop column if exists category_name;
 
--- Recréer le search_vector avec le tableau de catégories
-alter table public.posts
-  add column search_vector tsvector
-  generated always as (
-    to_tsvector(
-      'french'::regconfig,
-      coalesce(title, '') || ' ' ||
-      coalesce(content, '') || ' ' ||
-      coalesce(array_to_string(category_names, ' '), '') || ' ' ||
-      coalesce(city, '')
-    )
-  ) stored;
-
-create index if not exists posts_search_idx on public.posts using gin(search_vector);
 create index if not exists posts_categories_idx on public.posts using gin(category_names);
 
 -- Supprimer le trigger de comptage (incompatible avec les tableaux)
 drop trigger if exists update_post_category_count on public.posts;
 drop function if exists public.update_category_count();
+
+-- search_vector via trigger (generated column interdit avec array_to_string)
+alter table public.posts add column if not exists search_vector tsvector;
+
+create or replace function public.posts_search_vector_update()
+returns trigger language plpgsql as $$
+begin
+  new.search_vector := to_tsvector(
+    'french',
+    coalesce(new.title, '') || ' ' ||
+    coalesce(new.content, '') || ' ' ||
+    coalesce(array_to_string(new.category_names, ' '), '') || ' ' ||
+    coalesce(new.city, '')
+  );
+  return new;
+end;
+$$;
+
+drop trigger if exists posts_search_vector_trigger on public.posts;
+create trigger posts_search_vector_trigger
+  before insert or update on public.posts
+  for each row execute function public.posts_search_vector_update();
+
+-- Backfill les lignes existantes
+update public.posts set title = title;
+
+create index if not exists posts_search_idx on public.posts using gin(search_vector);
