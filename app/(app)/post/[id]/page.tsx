@@ -4,6 +4,7 @@ import { ArrowLeft, MapPin, Calendar, Trash2, MessageSquare } from 'lucide-react
 import { createClient } from '@/lib/supabase/server'
 import { type Post } from '@/lib/types'
 import { formatDate, getInitials } from '@/lib/utils'
+import { categoryColor } from '@/components/CategoryMultiSelect'
 
 export default async function PostPage({
   params,
@@ -61,9 +62,24 @@ export default async function PostPage({
             >
               {post.post_type === 'offre' ? '📢 Offre / Proposition' : '🔍 Demande / Recherche'}
             </span>
-            <h1 className="text-2xl font-semibold text-slate-900 leading-snug">
+            <h1 className="text-2xl font-semibold text-slate-900 leading-snug mb-2">
               {post.title}
             </h1>
+            {post.category_names?.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {post.category_names.map((name) => {
+                  const color = categoryColor(name)
+                  return (
+                    <span
+                      key={name}
+                      className={`px-2 py-0.5 text-xs rounded font-medium ${color.bg} ${color.text}`}
+                    >
+                      {name}
+                    </span>
+                  )
+                })}
+              </div>
+            )}
           </div>
           {isOwner && (
             <form action={deletePost}>

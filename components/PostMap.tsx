@@ -59,7 +59,7 @@ export default function PostMap({ posts }: Props) {
           .bindPopup(
             `<div style="min-width:180px;font-family:system-ui">
               <p style="font-weight:600;margin:0 0 4px">${post.title}</p>
-              ${post.category_name ? `<span style="background:#eff6ff;color:#1d4ed8;font-size:11px;padding:2px 8px;border-radius:999px">${post.category_name}</span>` : ''}
+              ${post.category_names?.length ? `<span style="background:#eff6ff;color:#1d4ed8;font-size:11px;padding:2px 8px;border-radius:999px">${post.category_names.join(', ')}</span>` : ''}
               ${post.city ? `<p style="color:#64748b;font-size:12px;margin:4px 0 0">${post.city}</p>` : ''}
               <a href="/post/${post.id}" style="display:inline-block;margin-top:8px;color:#2563eb;font-size:12px;font-weight:500">Voir l'annonce →</a>
             </div>`,

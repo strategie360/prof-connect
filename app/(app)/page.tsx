@@ -5,6 +5,7 @@ import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { type Post, type Category } from '@/lib/types'
 import { formatRelativeDate, getInitials, truncate } from '@/lib/utils'
+import { categoryColor } from '@/components/CategoryMultiSelect'
 import SearchBar from '@/components/SearchBar'
 
 export default async function FeedPage({
@@ -45,7 +46,7 @@ export default async function FeedPage({
   }
 
   if (category) {
-    query = query.eq('category_name', category)
+    query = query.contains('category_names', [category])
   }
 
   const { data: posts } = await query.returns<Post[]>()
@@ -124,11 +125,17 @@ export default async function FeedPage({
                         · Académie de {post.profiles.academy}
                       </span>
                     )}
-                    {post.category_name && (
-                      <span className="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded-full">
-                        {post.category_name}
-                      </span>
-                    )}
+                    {post.category_names?.map((name) => {
+                      const color = categoryColor(name)
+                      return (
+                        <span
+                          key={name}
+                          className={`px-2 py-0.5 text-xs rounded font-medium ${color.bg} ${color.text}`}
+                        >
+                          {name}
+                        </span>
+                      )
+                    })}
                   </div>
                   <h2 className="font-semibold text-slate-900 text-base leading-snug mb-1">
                     {post.title}

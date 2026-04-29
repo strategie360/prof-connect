@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { createPost } from '@/app/(app)/post/actions'
-import CategoryCombobox from './CategoryCombobox'
+import CategoryMultiSelect from './CategoryMultiSelect'
 import AddressAutocomplete from './AddressAutocomplete'
 import type { Category } from '@/lib/types'
 
@@ -35,8 +35,8 @@ export default function NewPostForm({ categories, error }: Props) {
         body: JSON.stringify({ title, content }),
       })
       if (!res.ok) throw new Error()
-      const data = await res.json()
-      setAiCategory(data.category)
+      const { category } = await res.json()
+      setAiCategory(category)
     } catch {
       setAiError("Impossible d'obtenir une suggestion IA.")
     } finally {
@@ -131,31 +131,28 @@ export default function NewPostForm({ categories, error }: Props) {
         />
       </div>
 
-      {/* Catégorie */}
-      <div>
+      {/* Catégories (multi-select Notion) */}
+      <div className="relative">
         <label className="block text-sm font-medium text-slate-700 mb-1">
-          Catégorie{' '}
+          Catégories{' '}
           <span className="text-slate-400 font-normal">(optionnel)</span>
         </label>
-        <CategoryCombobox
+        <CategoryMultiSelect
           categories={categories}
-          defaultValue={aiCategory}
+          aiSuggestion={aiCategory}
           onAISuggest={suggestCategory}
           isAILoading={isAILoading}
         />
         {aiError && <p className="mt-1 text-xs text-red-500">{aiError}</p>}
-        {aiCategory && !isAILoading && (
-          <p className="mt-1 text-xs text-purple-600">
-            ✦ IA a suggéré «&nbsp;{aiCategory}&nbsp;» — modifiable ci-dessus
-          </p>
-        )}
       </div>
 
       {/* Adresse */}
       <div>
         <label className="block text-sm font-medium text-slate-700 mb-1">
           Localisation{' '}
-          <span className="text-slate-400 font-normal">(optionnel — permet l'affichage sur la carte)</span>
+          <span className="text-slate-400 font-normal">
+            (optionnel — permet l&apos;affichage sur la carte)
+          </span>
         </label>
         <AddressAutocomplete />
       </div>

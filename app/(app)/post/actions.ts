@@ -13,7 +13,7 @@ export async function createPost(formData: FormData) {
   const title = (formData.get('title') as string).trim()
   const content = (formData.get('content') as string).trim()
   const post_type = formData.get('post_type') === 'offre' ? 'offre' : 'demande'
-  const category_name = (formData.get('category_name') as string | null)?.trim() || null
+  const category_names = (formData.getAll('category_names') as string[]).filter(Boolean)
   const address = (formData.get('address') as string | null)?.trim() || null
   const city = (formData.get('city') as string | null)?.trim() || null
   const latRaw = formData.get('lat') as string | null
@@ -23,24 +23,15 @@ export async function createPost(formData: FormData) {
 
   if (!title || !content) redirect('/post/new?error=champs_requis')
 
-  // Upsert de la catégorie (insère si nouvelle)
-  let category_id: string | null = null
-  if (category_name) {
+  // Upsert des catégories (crée celles qui n'existent pas encore)
+  for (const name of category_names) {
     const { data: existing } = await supabase
       .from('categories')
       .select('id')
-      .ilike('name', category_name)
+      .ilike('name', name)
       .maybeSingle()
-
-    if (existing) {
-      category_id = existing.id
-    } else {
-      const { data: newCat } = await supabase
-        .from('categories')
-        .insert({ name: category_name })
-        .select('id')
-        .single()
-      category_id = newCat?.id ?? null
+    if (!existing) {
+      await supabase.from('categories').insert({ name })
     }
   }
 
@@ -51,8 +42,7 @@ export async function createPost(formData: FormData) {
       title,
       content,
       post_type,
-      category_id,
-      category_name,
+      category_names,
       address,
       city,
       lat: lat && !isNaN(lat) ? lat : null,

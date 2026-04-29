@@ -29,8 +29,7 @@ export type Post = {
   address: string | null
   lat: number | null
   lng: number | null
-  category_id: string | null
-  category_name: string | null
+  category_names: string[]
   created_at: string
   updated_at: string
   profiles?: Profile
