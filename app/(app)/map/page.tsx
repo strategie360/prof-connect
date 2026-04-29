@@ -14,7 +14,7 @@ export default async function MapPage() {
 
   const { data: posts } = await supabase
     .from('posts')
-    .select('id, title, category_name, city, address, lat, lng, profiles(full_name)')
+    .select('id, title, category_names, city, address, lat, lng, profiles(full_name)')
     .not('lat', 'is', null)
     .not('lng', 'is', null)
     .order('created_at', { ascending: false })
