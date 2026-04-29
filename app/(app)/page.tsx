@@ -3,17 +3,19 @@ import { redirect } from 'next/navigation'
 import { Plus, MapPin, Calendar } from 'lucide-react'
 import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
-import { type Post, type Category } from '@/lib/types'
-import { formatRelativeDate, getInitials, truncate } from '@/lib/utils'
+import { type Post } from '@/lib/types'
+import { formatRelativeDate, getInitials, truncate, haversineKm } from '@/lib/utils'
 import { categoryColor } from '@/lib/categoryColor'
 import SearchBar from '@/components/SearchBar'
+
+type PostWithDistance = Post & { distance_km?: number }
 
 export default async function FeedPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; category?: string }>
+  searchParams: Promise<{ q?: string; category?: string; slat?: string; slng?: string; radius?: string }>
 }) {
-  const { q, category } = await searchParams
+  const { q, category, slat, slng, radius } = await searchParams
   const supabase = await createClient()
 
   const {
@@ -21,37 +23,61 @@ export default async function FeedPage({
   } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // Catégories pour les filtres
   const { data: categories } = await supabase
     .from('categories')
     .select('*')
     .order('post_count', { ascending: false })
     .limit(20)
-    .returns<Category[]>()
 
-  // Construction de la requête avec recherche + filtre
+  const searchLat = slat ? parseFloat(slat) : null
+  const searchLng = slng ? parseFloat(slng) : null
+  const radiusKm = radius ? parseFloat(radius) : null
+  const hasDistanceFilter = searchLat !== null && searchLng !== null && radiusKm !== null
+
+  // Fetch more when distance filtering so we can apply Haversine after
+  const fetchLimit = hasDistanceFilter ? 500 : 50
+
   let query = supabase
     .from('posts')
     .select('*, profiles(id, full_name, academy, city)')
     .order('created_at', { ascending: false })
-    .limit(50)
+    .limit(fetchLimit)
 
   if (q) {
-    // Recherche full-text sur le vecteur généré
-    query = query.textSearch('search_vector', q
-      .trim()
-      .split(/\s+/)
-      .filter(Boolean)
-      .join(' | '), { config: 'french' })
+    query = query.textSearch(
+      'search_vector',
+      q.trim().split(/\s+/).filter(Boolean).join(' | '),
+      { config: 'french' }
+    )
   }
 
   if (category) {
     query = query.contains('category_names', [category])
   }
 
-  const { data: posts } = await query.returns<Post[]>()
+  // Pre-filter to geolocated posts only when distance filter is active
+  if (hasDistanceFilter) {
+    query = query.not('lat', 'is', null)
+  }
 
-  const hasFilters = !!(q || category)
+  const { data: rawPosts } = await query.returns<Post[]>()
+
+  // Apply Haversine distance filter + sort
+  let posts: PostWithDistance[] | null = rawPosts
+  if (rawPosts && hasDistanceFilter && searchLat !== null && searchLng !== null && radiusKm !== null) {
+    posts = rawPosts
+      .map((p) => ({
+        ...p,
+        distance_km:
+          p.lat != null && p.lng != null
+            ? haversineKm(searchLat, searchLng, p.lat, p.lng)
+            : undefined,
+      }))
+      .filter((p) => p.distance_km !== undefined && p.distance_km <= radiusKm)
+      .sort((a, b) => (a.distance_km ?? 999) - (b.distance_km ?? 999))
+  }
+
+  const hasFilters = !!(q || category || hasDistanceFilter)
 
   return (
     <div>
@@ -72,8 +98,7 @@ export default async function FeedPage({
         </Link>
       </div>
 
-      {/* SearchBar (client) avec Suspense requis par useSearchParams */}
-      <Suspense fallback={<div className="h-16 bg-slate-100 rounded-lg animate-pulse mb-6" />}>
+      <Suspense fallback={<div className="h-24 bg-slate-100 rounded-lg animate-pulse mb-6" />}>
         <SearchBar categories={categories ?? []} />
       </Suspense>
 
@@ -82,11 +107,11 @@ export default async function FeedPage({
           {hasFilters ? (
             <>
               <p className="text-lg font-medium mb-1">Aucun résultat</p>
-              <p className="text-sm">Essayez avec d'autres mots-clés ou supprimez les filtres.</p>
+              <p className="text-sm">Essayez avec d&apos;autres mots-clés ou supprimez les filtres.</p>
             </>
           ) : (
             <>
-              <p className="text-lg font-medium mb-1">Aucune annonce pour l'instant</p>
+              <p className="text-lg font-medium mb-1">Aucune annonce pour l&apos;instant</p>
               <p className="text-sm">Soyez le premier à publier !</p>
             </>
           )}
@@ -148,6 +173,14 @@ export default async function FeedPage({
                       <span className="flex items-center gap-1">
                         <MapPin className="w-3 h-3" />
                         {post.city ?? post.address}
+                      </span>
+                    )}
+                    {post.distance_km !== undefined && (
+                      <span className="flex items-center gap-1 text-blue-500 font-medium">
+                        <MapPin className="w-3 h-3" />
+                        {post.distance_km < 1
+                          ? '< 1 km'
+                          : `${Math.round(post.distance_km)} km`}
                       </span>
                     )}
                     <span className="flex items-center gap-1">

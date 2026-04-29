@@ -4,6 +4,7 @@ import {
   getInitials,
   getAcademyFromEmail,
   truncate,
+  haversineKm,
 } from '@/lib/utils'
 
 describe('isTeacherEmail', () => {
@@ -51,6 +52,28 @@ describe('getAcademyFromEmail', () => {
   })
   it('returns null for unknown domain', () => {
     expect(getAcademyFromEmail('x@gmail.com')).toBeNull()
+  })
+})
+
+describe('haversineKm', () => {
+  it('returns 0 for identical points', () => {
+    expect(haversineKm(48.8566, 2.3522, 48.8566, 2.3522)).toBeCloseTo(0, 1)
+  })
+
+  it('Paris → Lyon is roughly 390 km', () => {
+    // Paris (48.8566, 2.3522) → Lyon (45.7640, 4.8357)
+    expect(haversineKm(48.8566, 2.3522, 45.764, 4.8357)).toBeCloseTo(390, -1)
+  })
+
+  it('Paris → Versailles is under 20 km', () => {
+    // Versailles (48.8053, 2.1347)
+    expect(haversineKm(48.8566, 2.3522, 48.8053, 2.1347)).toBeLessThan(20)
+  })
+
+  it('is symmetric', () => {
+    const d1 = haversineKm(48.8566, 2.3522, 45.764, 4.8357)
+    const d2 = haversineKm(45.764, 4.8357, 48.8566, 2.3522)
+    expect(d1).toBeCloseTo(d2, 5)
   })
 })
 
