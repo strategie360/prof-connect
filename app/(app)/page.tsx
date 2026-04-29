@@ -5,7 +5,7 @@ import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { type Post, type Category } from '@/lib/types'
 import { formatRelativeDate, getInitials, truncate } from '@/lib/utils'
-import { categoryColor } from '@/components/CategoryMultiSelect'
+import { categoryColor } from '@/lib/categoryColor'
 import SearchBar from '@/components/SearchBar'
 
 export default async function FeedPage({

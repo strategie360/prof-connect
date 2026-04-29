@@ -4,7 +4,7 @@ import { ArrowLeft, MapPin, Calendar, Trash2, MessageSquare } from 'lucide-react
 import { createClient } from '@/lib/supabase/server'
 import { type Post } from '@/lib/types'
 import { formatDate, getInitials } from '@/lib/utils'
-import { categoryColor } from '@/components/CategoryMultiSelect'
+import { categoryColor } from '@/lib/categoryColor'
 
 export default async function PostPage({
   params,
