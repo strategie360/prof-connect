@@ -18,7 +18,7 @@ alter table public.posts
   add column search_vector tsvector
   generated always as (
     to_tsvector(
-      'french',
+      'french'::regconfig,
       coalesce(title, '') || ' ' ||
       coalesce(content, '') || ' ' ||
       coalesce(array_to_string(category_names, ' '), '') || ' ' ||
