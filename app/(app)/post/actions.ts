@@ -12,6 +12,7 @@ export async function createPost(formData: FormData) {
 
   const title = (formData.get('title') as string).trim()
   const content = (formData.get('content') as string).trim()
+  const post_type = formData.get('post_type') === 'offre' ? 'offre' : 'demande'
   const category_name = (formData.get('category_name') as string | null)?.trim() || null
   const address = (formData.get('address') as string | null)?.trim() || null
   const city = (formData.get('city') as string | null)?.trim() || null
@@ -49,6 +50,7 @@ export async function createPost(formData: FormData) {
       author_id: user.id,
       title,
       content,
+      post_type,
       category_id,
       category_name,
       address,

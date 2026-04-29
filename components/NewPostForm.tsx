@@ -14,6 +14,7 @@ type Props = {
 
 export default function NewPostForm({ categories, error }: Props) {
   const [isPending, startTransition] = useTransition()
+  const [postType, setPostType] = useState<'demande' | 'offre'>('demande')
   const [aiCategory, setAiCategory] = useState('')
   const [isAILoading, setIsAILoading] = useState(false)
   const [aiError, setAiError] = useState('')
@@ -58,6 +59,42 @@ export default function NewPostForm({ categories, error }: Props) {
             : 'Publication impossible, réessayez.'}
         </div>
       )}
+
+      {/* Type d'annonce */}
+      <div>
+        <label className="block text-sm font-medium text-slate-700 mb-2">
+          Type d&apos;annonce
+        </label>
+        <input type="hidden" name="post_type" value={postType} />
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => setPostType('demande')}
+            className={`flex flex-col items-center gap-1.5 px-4 py-3 rounded-xl border-2 text-sm font-medium transition-all ${
+              postType === 'demande'
+                ? 'border-amber-400 bg-amber-50 text-amber-800'
+                : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'
+            }`}
+          >
+            <span className="text-xl">🔍</span>
+            <span>Demande / Recherche</span>
+            <span className="text-xs font-normal opacity-70">Je cherche quelque chose</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setPostType('offre')}
+            className={`flex flex-col items-center gap-1.5 px-4 py-3 rounded-xl border-2 text-sm font-medium transition-all ${
+              postType === 'offre'
+                ? 'border-emerald-400 bg-emerald-50 text-emerald-800'
+                : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'
+            }`}
+          >
+            <span className="text-xl">📢</span>
+            <span>Offre / Proposition</span>
+            <span className="text-xs font-normal opacity-70">Je propose quelque chose</span>
+          </button>
+        </div>
+      </div>
 
       {/* Titre */}
       <div>

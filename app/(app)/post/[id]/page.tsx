@@ -51,9 +51,20 @@ export default async function PostPage({
 
       <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-6 mb-4">
         <div className="flex items-start justify-between gap-4 mb-4">
-          <h1 className="text-2xl font-semibold text-slate-900 leading-snug">
-            {post.title}
-          </h1>
+          <div className="flex-1 min-w-0">
+            <span
+              className={`inline-block px-2.5 py-0.5 text-xs font-medium rounded-full mb-2 ${
+                post.post_type === 'offre'
+                  ? 'bg-emerald-50 text-emerald-700'
+                  : 'bg-amber-50 text-amber-700'
+              }`}
+            >
+              {post.post_type === 'offre' ? '📢 Offre / Proposition' : '🔍 Demande / Recherche'}
+            </span>
+            <h1 className="text-2xl font-semibold text-slate-900 leading-snug">
+              {post.title}
+            </h1>
+          </div>
           {isOwner && (
             <form action={deletePost}>
               <button

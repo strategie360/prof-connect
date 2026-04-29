@@ -17,11 +17,14 @@ export type Category = {
   created_at: string
 }
 
+export type PostType = 'demande' | 'offre'
+
 export type Post = {
   id: string
   author_id: string
   title: string
   content: string
+  post_type: PostType
   city: string | null
   address: string | null
   lat: number | null

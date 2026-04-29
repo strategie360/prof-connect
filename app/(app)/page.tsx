@@ -107,6 +107,15 @@ export default async function FeedPage({
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <span
+                      className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+                        post.post_type === 'offre'
+                          ? 'bg-emerald-50 text-emerald-700'
+                          : 'bg-amber-50 text-amber-700'
+                      }`}
+                    >
+                      {post.post_type === 'offre' ? 'Offre' : 'Demande'}
+                    </span>
                     <span className="text-sm font-medium text-slate-700">
                       {post.profiles?.full_name ?? 'Enseignant·e'}
                     </span>
