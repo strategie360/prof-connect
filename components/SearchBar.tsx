@@ -2,16 +2,16 @@
 
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { useTransition, useRef, useState, useEffect } from 'react'
-import { Search, X, Map, MapPin } from 'lucide-react'
+import {
+  Search, X, Map, MapPin, LocateFixed,
+  SlidersHorizontal, ChevronDown, ChevronUp,
+} from 'lucide-react'
 import type { Category } from '@/lib/types'
 
 const RADIUS_OPTIONS = [5, 20, 50, 100]
 
 type Suggestion = { label: string; lat: number; lng: number }
-
-type Props = {
-  categories: Category[]
-}
+type Props = { categories: Category[] }
 
 export default function SearchBar({ categories }: Props) {
   const router = useRouter()
@@ -29,11 +29,16 @@ export default function SearchBar({ categories }: Props) {
   const slng = params.get('slng') ?? ''
   const activeRadius = params.get('radius') ?? ''
 
+  const hasLocation = !!(slat && slng)
+  const advancedCount = (hasLocation ? 1 : 0) + (activeCategory ? 1 : 0)
+
   const [locationInput, setLocationInput] = useState(sloc)
   const [suggestions, setSuggestions] = useState<Suggestion[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
+  const [showAdvanced, setShowAdvanced] = useState(advancedCount > 0)
+  const [isLocating, setIsLocating] = useState(false)
+  const [geoError, setGeoError] = useState('')
 
-  // Sync input when URL changes (back/forward navigation)
   useEffect(() => { setLocationInput(sloc) }, [sloc])
 
   useEffect(() => {
@@ -56,14 +61,12 @@ export default function SearchBar({ categories }: Props) {
 
   function handleSearch(value: string) {
     clearTimeout(searchDebounce.current)
-    searchDebounce.current = setTimeout(
-      () => updateParams({ q: value || null }),
-      300
-    )
+    searchDebounce.current = setTimeout(() => updateParams({ q: value || null }), 300)
   }
 
   function handleLocationInput(value: string) {
     setLocationInput(value)
+    setGeoError('')
     if (!value.trim()) {
       setSuggestions([])
       updateParams({ slat: null, slng: null, sloc: null, radius: null })
@@ -104,14 +107,59 @@ export default function SearchBar({ categories }: Props) {
   function clearLocation() {
     setLocationInput('')
     setSuggestions([])
+    setGeoError('')
     updateParams({ slat: null, slng: null, sloc: null, radius: null })
   }
 
-  const hasLocation = !!(slat && slng)
+  async function useMyLocation() {
+    if (!navigator.geolocation) {
+      setGeoError('Géolocalisation non disponible sur ce navigateur')
+      return
+    }
+    setIsLocating(true)
+    setGeoError('')
+    try {
+      const pos = await new Promise<GeolocationPosition>((resolve, reject) =>
+        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 8000 })
+      )
+      const { latitude: lat, longitude: lng } = pos.coords
+      let label = 'Ma position'
+      try {
+        const res = await fetch(
+          `https://api-adresse.data.gouv.fr/reverse/?lon=${lng}&lat=${lat}`
+        )
+        const json = await res.json()
+        if (json.features[0]) {
+          label = json.features[0].properties.city ?? json.features[0].properties.label
+        }
+      } catch {}
+      setLocationInput(label)
+      updateParams({
+        slat: String(lat),
+        slng: String(lng),
+        sloc: label,
+        radius: activeRadius || '20',
+      })
+    } catch (err: unknown) {
+      const code = (err as GeolocationPositionError)?.code
+      setGeoError(code === 1 ? 'Localisation refusée' : 'Impossible de vous localiser')
+    } finally {
+      setIsLocating(false)
+    }
+  }
+
+  function clearAllFilters() {
+    setLocationInput('')
+    setSuggestions([])
+    setGeoError('')
+    updateParams({ q: null, category: null, slat: null, slng: null, sloc: null, radius: null })
+  }
+
+  const hasAnyFilter = !!(q || activeCategory || hasLocation)
 
   return (
-    <div className="space-y-3 mb-6">
-      {/* Ligne 1 : texte + carte */}
+    <div className="space-y-2 mb-6">
+      {/* Barre principale */}
       <div className="flex gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -132,106 +180,176 @@ export default function SearchBar({ categories }: Props) {
             </button>
           )}
         </div>
+
+        {/* Toggle filtres avancés */}
+        <button
+          type="button"
+          onClick={() => setShowAdvanced((v) => !v)}
+          className={`relative flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg border transition-colors ${
+            showAdvanced || advancedCount > 0
+              ? 'bg-blue-50 border-blue-300 text-blue-700'
+              : 'bg-white border-slate-300 text-slate-600 hover:border-slate-400'
+          }`}
+        >
+          <SlidersHorizontal className="w-4 h-4" />
+          <span className="hidden sm:inline">Filtres</span>
+          {advancedCount > 0 && (
+            <span className="flex items-center justify-center w-4 h-4 text-[10px] font-bold rounded-full bg-blue-600 text-white leading-none">
+              {advancedCount}
+            </span>
+          )}
+          {showAdvanced ? (
+            <ChevronUp className="w-3.5 h-3.5" />
+          ) : (
+            <ChevronDown className="w-3.5 h-3.5" />
+          )}
+        </button>
+
         <a
           href="/map"
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 hover:border-slate-400 rounded-lg transition-colors whitespace-nowrap"
+          className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 hover:border-slate-400 rounded-lg transition-colors"
         >
           <Map className="w-4 h-4" />
-          Carte
+          <span className="hidden sm:inline">Carte</span>
         </a>
       </div>
 
-      {/* Ligne 2 : localisation + rayon */}
-      <div className="flex gap-2 items-center flex-wrap">
-        <div ref={locationRef} className="relative flex-1 min-w-[180px]">
-          <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input
-            type="text"
-            value={locationInput}
-            onChange={(e) => handleLocationInput(e.target.value)}
-            onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
-            placeholder="Ville ou commune…"
-            className="w-full border border-slate-300 rounded-lg pl-9 pr-8 py-2 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white"
-          />
-          {locationInput && (
-            <button
-              type="button"
-              onClick={clearLocation}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
-          {showSuggestions && suggestions.length > 0 && (
-            <ul className="absolute z-20 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-52 overflow-y-auto">
-              {suggestions.map((s) => (
-                <li key={s.label}>
+      {/* Panneau filtres avancés */}
+      {showAdvanced && (
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-4">
+          {/* Localisation */}
+          <div>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">
+              Localisation
+            </p>
+            <div className="flex gap-2 flex-wrap">
+              <div ref={locationRef} className="relative flex-1 min-w-[180px]">
+                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="text"
+                  value={locationInput}
+                  onChange={(e) => handleLocationInput(e.target.value)}
+                  onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+                  placeholder="Ville ou commune…"
+                  className="w-full border border-slate-300 rounded-lg pl-9 pr-8 py-2 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white"
+                />
+                {locationInput && (
                   <button
                     type="button"
-                    onMouseDown={() => selectLocation(s)}
-                    className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                    onClick={clearLocation}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                   >
-                    <MapPin className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                    {s.label}
+                    <X className="w-4 h-4" />
                   </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+                )}
+                {showSuggestions && suggestions.length > 0 && (
+                  <ul className="absolute z-20 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-52 overflow-y-auto">
+                    {suggestions.map((s) => (
+                      <li key={s.label}>
+                        <button
+                          type="button"
+                          onMouseDown={() => selectLocation(s)}
+                          className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                        >
+                          <MapPin className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                          {s.label}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
 
-        {hasLocation && (
-          <div className="flex gap-1.5 items-center flex-wrap">
-            <span className="text-xs text-slate-500 whitespace-nowrap">Dans un rayon de</span>
-            {RADIUS_OPTIONS.map((r) => (
+              {/* Bouton Ma position */}
               <button
-                key={r}
                 type="button"
-                onClick={() => updateParams({ radius: String(r) })}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
-                  activeRadius === String(r)
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
-                }`}
+                onClick={useMyLocation}
+                disabled={isLocating}
+                className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 hover:border-blue-400 hover:text-blue-600 disabled:opacity-50 rounded-lg transition-colors whitespace-nowrap"
               >
-                {r} km
+                <LocateFixed
+                  className={`w-4 h-4 ${isLocating ? 'animate-pulse text-blue-500' : ''}`}
+                />
+                {isLocating ? 'Localisation…' : 'Ma position'}
               </button>
-            ))}
-          </div>
-        )}
-      </div>
+            </div>
 
-      {/* Filtres catégories */}
-      {categories.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => updateParams({ category: null })}
-            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-              !activeCategory
-                ? 'bg-blue-600 text-white'
-                : 'bg-white border border-slate-200 text-slate-600 hover:border-slate-300'
-            }`}
-          >
-            Toutes
-          </button>
-          {categories.map((cat) => (
-            <button
-              key={cat.id}
-              type="button"
-              onClick={() =>
-                updateParams({ category: cat.name === activeCategory ? null : cat.name })
-              }
-              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                cat.name === activeCategory
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white border border-slate-200 text-slate-600 hover:border-slate-300'
-              }`}
-            >
-              {cat.name}
-              <span className="ml-1 opacity-60">{cat.post_count}</span>
-            </button>
-          ))}
+            {geoError && <p className="mt-1.5 text-xs text-red-500">{geoError}</p>}
+
+            {/* Rayon */}
+            {hasLocation && (
+              <div className="flex gap-1.5 items-center mt-3 flex-wrap">
+                <span className="text-xs text-slate-500">Dans un rayon de</span>
+                {RADIUS_OPTIONS.map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => updateParams({ radius: String(r) })}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
+                      activeRadius === String(r)
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
+                    }`}
+                  >
+                    {r} km
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Catégories */}
+          {categories.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">
+                Catégorie
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => updateParams({ category: null })}
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                    !activeCategory
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-white border border-slate-200 text-slate-600 hover:border-slate-300'
+                  }`}
+                >
+                  Toutes
+                </button>
+                {categories.map((cat) => (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() =>
+                      updateParams({ category: cat.name === activeCategory ? null : cat.name })
+                    }
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                      cat.name === activeCategory
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-white border border-slate-200 text-slate-600 hover:border-slate-300'
+                    }`}
+                  >
+                    {cat.name}
+                    <span className="ml-1 opacity-60">{cat.post_count}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Effacer tous les filtres */}
+          {hasAnyFilter && (
+            <div className="pt-2 border-t border-slate-200">
+              <button
+                type="button"
+                onClick={clearAllFilters}
+                className="text-xs font-medium text-slate-400 hover:text-red-500 transition-colors flex items-center gap-1"
+              >
+                <X className="w-3.5 h-3.5" />
+                Effacer tous les filtres
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
