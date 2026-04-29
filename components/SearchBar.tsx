@@ -330,7 +330,9 @@ export default function SearchBar({ categories }: Props) {
                     }`}
                   >
                     {cat.name}
-                    <span className="ml-1 opacity-60">{cat.post_count}</span>
+                    {cat.post_count > 0 && (
+                      <span className="ml-1 opacity-60">{cat.post_count}</span>
+                    )}
                   </button>
                 ))}
               </div>
