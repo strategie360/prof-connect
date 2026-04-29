@@ -10,12 +10,24 @@ export type Profile = {
   updated_at: string
 }
 
+export type Category = {
+  id: string
+  name: string
+  post_count: number
+  created_at: string
+}
+
 export type Post = {
   id: string
   author_id: string
   title: string
   content: string
   city: string | null
+  address: string | null
+  lat: number | null
+  lng: number | null
+  category_id: string | null
+  category_name: string | null
   created_at: string
   updated_at: string
   profiles?: Profile
