@@ -16,10 +16,9 @@ export default function PostMap({ posts }: Props) {
     if (!containerRef.current || mapRef.current) return
     let cancelled = false
 
-    Promise.all([
-      import('leaflet'),
-      import('leaflet.markercluster'),
-    ]).then(([L]) => {
+    ;(async () => {
+      const L = await import('leaflet')
+      await import('leaflet.markercluster') // augmente L après que Leaflet est chargé
       if (cancelled || !containerRef.current || mapRef.current) return
 
       // Fix icônes Leaflet (bug Webpack/Next.js)
@@ -75,7 +74,7 @@ export default function PostMap({ posts }: Props) {
       })
 
       map.addLayer(cluster)
-    })
+    })()
 
     return () => {
       cancelled = true
