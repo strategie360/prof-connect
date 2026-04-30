@@ -18,10 +18,8 @@ export default function PostMap({ posts }: Props) {
 
     ;(async () => {
       const L = await import('leaflet')
-      await import('leaflet.markercluster') // augmente L après que Leaflet est chargé
       if (cancelled || !containerRef.current || mapRef.current) return
 
-      // Fix icônes Leaflet (bug Webpack/Next.js)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       delete (L.Icon.Default.prototype as any)._getIconUrl
       L.Icon.Default.mergeOptions({
@@ -55,10 +53,6 @@ export default function PostMap({ posts }: Props) {
         maxZoom: 18,
       }).addTo(map)
 
-      // Cluster group pour gérer un grand nombre de marqueurs
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const cluster = (L as any).markerClusterGroup({ maxClusterRadius: 50 })
-
       postsWithGeo.forEach((post) => {
         L.marker([post.lat!, post.lng!])
           .bindPopup(
@@ -70,10 +64,8 @@ export default function PostMap({ posts }: Props) {
             </div>`,
             { maxWidth: 240 }
           )
-          .addTo(cluster)
+          .addTo(map)
       })
-
-      map.addLayer(cluster)
     })()
 
     return () => {
@@ -88,14 +80,6 @@ export default function PostMap({ posts }: Props) {
       <link
         rel="stylesheet"
         href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"
-      />
-      <link
-        rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.min.css"
-      />
-      <link
-        rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.min.css"
       />
       <div ref={containerRef} className="w-full h-full" />
     </>
