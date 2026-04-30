@@ -16,8 +16,12 @@ export default function PostMap({ posts }: Props) {
     if (!containerRef.current || mapRef.current) return
     let cancelled = false
 
-    import('leaflet').then((L) => {
+    Promise.all([
+      import('leaflet'),
+      import('leaflet.markercluster'),
+    ]).then(([L]) => {
       if (cancelled || !containerRef.current || mapRef.current) return
+
       // Fix icônes Leaflet (bug Webpack/Next.js)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       delete (L.Icon.Default.prototype as any)._getIconUrl
@@ -32,17 +36,14 @@ export default function PostMap({ posts }: Props) {
 
       const postsWithGeo = posts.filter((p) => p.lat && p.lng)
 
-      // Centrer sur le barycentre des annonces ou sur la France
       let center: [number, number] = [46.6, 2.3]
       let zoom = 5
       if (postsWithGeo.length === 1) {
         center = [postsWithGeo[0].lat!, postsWithGeo[0].lng!]
         zoom = 12
       } else if (postsWithGeo.length > 1) {
-        const avgLat =
-          postsWithGeo.reduce((s, p) => s + p.lat!, 0) / postsWithGeo.length
-        const avgLng =
-          postsWithGeo.reduce((s, p) => s + p.lng!, 0) / postsWithGeo.length
+        const avgLat = postsWithGeo.reduce((s, p) => s + p.lat!, 0) / postsWithGeo.length
+        const avgLng = postsWithGeo.reduce((s, p) => s + p.lng!, 0) / postsWithGeo.length
         center = [avgLat, avgLng]
         zoom = 6
       }
@@ -55,9 +56,12 @@ export default function PostMap({ posts }: Props) {
         maxZoom: 18,
       }).addTo(map)
 
+      // Cluster group pour gérer un grand nombre de marqueurs
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const cluster = (L as any).markerClusterGroup({ maxClusterRadius: 50 })
+
       postsWithGeo.forEach((post) => {
         L.marker([post.lat!, post.lng!])
-          .addTo(map)
           .bindPopup(
             `<div style="min-width:180px;font-family:system-ui">
               <p style="font-weight:600;margin:0 0 4px">${post.title}</p>
@@ -67,7 +71,10 @@ export default function PostMap({ posts }: Props) {
             </div>`,
             { maxWidth: 240 }
           )
+          .addTo(cluster)
       })
+
+      map.addLayer(cluster)
     })
 
     return () => {
@@ -79,10 +86,17 @@ export default function PostMap({ posts }: Props) {
 
   return (
     <>
-      {/* CSS Leaflet chargé depuis CDN pour éviter les conflits SSR */}
       <link
         rel="stylesheet"
         href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"
+      />
+      <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.min.css"
+      />
+      <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.min.css"
       />
       <div ref={containerRef} className="w-full h-full" />
     </>
