@@ -24,7 +24,7 @@ export default async function MapPage() {
   const withGeo = posts ?? []
 
   return (
-    <div className="flex flex-col" style={{ height: 'calc(100vh - 3.5rem)' }}>
+    <div className="-mx-4 -my-6 px-4 flex flex-col" style={{ height: 'calc(100vh - 3.5rem)' }}>
       {/* Header */}
       <div className="flex items-center justify-between py-3 mb-3 flex-shrink-0">
         <div className="flex items-center gap-3">

@@ -81,7 +81,7 @@ export default function MessageThread({
   let lastDate = ''
 
   return (
-    <div className="flex flex-col h-[calc(100vh-8rem)]">
+    <div className="flex flex-col h-full">
       {/* Messages */}
       <div className="flex-1 overflow-y-auto py-4 space-y-1">
         {messages.map((msg) => {
