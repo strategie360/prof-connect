@@ -125,7 +125,7 @@ export default function MessageThread({
       <form
         ref={formRef}
         onSubmit={handleSubmit}
-        className="flex items-end gap-2 pt-3 border-t border-slate-200"
+        className="flex items-end gap-2 pt-3 pb-4 border-t border-slate-200"
       >
         {postId && (
           <input type="hidden" name="post_id" value={postId} />

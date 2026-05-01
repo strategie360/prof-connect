@@ -24,9 +24,9 @@ export default async function MapPage() {
   const withGeo = posts ?? []
 
   return (
-    <div className="-mx-4 -my-6 px-4 flex flex-col" style={{ height: 'calc(100vh - 3.5rem)' }}>
+    <div className="-mx-4 -my-6 flex flex-col" style={{ height: 'calc(100vh - 3.5rem)' }}>
       {/* Header */}
-      <div className="flex items-center justify-between py-3 mb-3 flex-shrink-0">
+      <div className="flex items-center justify-between px-4 py-3 mb-2 flex-shrink-0">
         <div className="flex items-center gap-3">
           <Link
             href="/"
@@ -45,7 +45,7 @@ export default async function MapPage() {
 
       {/* Carte */}
       {withGeo.length === 0 ? (
-        <div className="flex-1 bg-white border border-slate-200 rounded-xl flex flex-col items-center justify-center gap-3 text-slate-400">
+        <div className="flex-1 mx-4 mb-4 bg-white border border-slate-200 rounded-xl flex flex-col items-center justify-center gap-3 text-slate-400">
           <MapPin className="w-10 h-10 opacity-40" />
           <p className="text-base font-medium">Aucune annonce géolocalisée</p>
           <p className="text-sm text-center max-w-xs">
@@ -59,7 +59,7 @@ export default async function MapPage() {
           </Link>
         </div>
       ) : (
-        <div className="flex-1 rounded-xl overflow-hidden border border-slate-200 shadow-sm">
+        <div className="flex-1 mx-4 mb-4 rounded-xl overflow-hidden border border-slate-200 shadow-sm">
           <MapWrapper posts={withGeo} />
         </div>
       )}
