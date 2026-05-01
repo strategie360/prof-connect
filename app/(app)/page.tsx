@@ -33,6 +33,14 @@ export default async function FeedPage({
   } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
+  // Redirect to onboarding if profile is incomplete
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('full_name, academy')
+    .eq('id', user.id)
+    .single()
+  if (!profile?.full_name || !profile?.academy) redirect('/profile/setup')
+
   const { data: categories } = await supabase
     .from('categories')
     .select('*')

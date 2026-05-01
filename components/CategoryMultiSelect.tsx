@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { X, Plus, Sparkles } from 'lucide-react'
+import { X, Plus } from 'lucide-react'
 import type { Category } from '@/lib/types'
 import { categoryColor } from '@/lib/categoryColor'
 
@@ -9,16 +9,12 @@ export { categoryColor }
 
 type Props = {
   categories: Category[]
-  aiSuggestion?: string
-  onAISuggest?: () => void
-  isAILoading?: boolean
+  aiSuggestions?: string[]
 }
 
 export default function CategoryMultiSelect({
   categories,
-  aiSuggestion,
-  onAISuggest,
-  isAILoading,
+  aiSuggestions,
 }: Props) {
   const [selected, setSelected] = useState<string[]>([])
   const [input, setInput] = useState('')
@@ -26,12 +22,14 @@ export default function CategoryMultiSelect({
   const inputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  // Ajoute la suggestion IA à la sélection si elle n'y est pas encore
+  // Ajoute les suggestions IA à la sélection si elles n'y sont pas encore
   useEffect(() => {
-    if (aiSuggestion && !selected.includes(aiSuggestion)) {
-      setSelected((prev) => [...prev, aiSuggestion])
-    }
-  }, [aiSuggestion]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (!aiSuggestions?.length) return
+    setSelected((prev) => {
+      const toAdd = aiSuggestions.filter((s) => !prev.includes(s))
+      return toAdd.length ? [...prev, ...toAdd] : prev
+    })
+  }, [aiSuggestions]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     function close(e: MouseEvent) {
@@ -126,19 +124,6 @@ export default function CategoryMultiSelect({
           className="flex-1 min-w-[140px] outline-none text-sm text-slate-900 placeholder:text-slate-400 bg-transparent py-0.5"
         />
       </div>
-
-      {/* Bouton suggestion IA */}
-      {onAISuggest && (
-        <button
-          type="button"
-          onClick={onAISuggest}
-          disabled={isAILoading}
-          className="flex items-center gap-1.5 text-xs font-medium text-purple-700 hover:text-purple-900 disabled:opacity-50 transition-colors"
-        >
-          <Sparkles className="w-3.5 h-3.5" />
-          {isAILoading ? 'Analyse en cours…' : "Suggérer avec l'IA"}
-        </button>
-      )}
 
       {/* Dropdown */}
       {open && (available.length > 0 || showCreate) && (

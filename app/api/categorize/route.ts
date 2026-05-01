@@ -1,6 +1,6 @@
-import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { groqJSON } from '@/lib/groq'
 
 export async function POST(req: Request) {
   const supabase = await createClient()
@@ -16,7 +16,7 @@ export async function POST(req: Request) {
 
   const { data: categories } = await supabase
     .from('categories')
-    .select('name, post_count')
+    .select('name')
     .order('post_count', { ascending: false })
     .limit(30)
 
@@ -25,32 +25,17 @@ export async function POST(req: Request) {
       ? categories.map((c) => c.name).join(', ')
       : 'aucune encore'
 
-  const client = new Anthropic()
-  const message = await client.messages.create({
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: 50,
-    messages: [
-      {
-        role: 'user',
-        content: `Tu es un assistant de classification d'annonces pour enseignants français.
-
+  try {
+    const result = await groqJSON<{ category: string }>(
+      `Tu es un assistant de classification d'annonces pour enseignants français.
+Réponds UNIQUEMENT en JSON : { "category": "nom de la catégorie" }
 Catégories existantes : ${existingList}
-
-Annonce à classer :
-Titre : ${title ?? ''}
-Description : ${content ?? ''}
-
-Propose UNE catégorie courte (2-3 mots maximum) en français pour cette annonce.
-- Si une catégorie existante convient parfaitement, utilise-la à l'identique.
-- Sinon, crée une catégorie courte et descriptive.
-Réponds UNIQUEMENT avec le nom de la catégorie, sans ponctuation ni explication.`,
-      },
-    ],
-  })
-
-  const category = (
-    message.content[0] as { type: string; text: string }
-  ).text.trim()
-
-  return NextResponse.json({ category })
+Propose UNE catégorie courte (2-3 mots) en français. Utilise une existante si elle convient.`,
+      `Titre : ${title ?? ''}\nDescription : ${content ?? ''}`,
+      32
+    )
+    return NextResponse.json({ category: result.category })
+  } catch {
+    return NextResponse.json({ error: 'Analyse impossible' }, { status: 500 })
+  }
 }

@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { type Profile } from '@/lib/types'
 import { getInitials } from '@/lib/utils'
+import { ACADEMIES, SUBJECTS } from '@/lib/constants'
 
 export default async function MyProfilePage({
   searchParams,
@@ -105,14 +106,17 @@ export default async function MyProfilePage({
               >
                 Académie
               </label>
-              <input
+              <select
                 id="academy"
                 name="academy"
-                type="text"
                 defaultValue={profile?.academy ?? ''}
-                placeholder="Paris, Lyon, Versailles…"
-                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-              />
+                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white"
+              >
+                <option value="">Choisir une académie…</option>
+                {ACADEMIES.map((a) => (
+                  <option key={a} value={a}>{a}</option>
+                ))}
+              </select>
             </div>
 
             <div>
@@ -122,14 +126,17 @@ export default async function MyProfilePage({
               >
                 Matière enseignée
               </label>
-              <input
+              <select
                 id="subject"
                 name="subject"
-                type="text"
                 defaultValue={profile?.subject ?? ''}
-                placeholder="Mathématiques, Français, Histoire…"
-                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-              />
+                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white"
+              >
+                <option value="">Choisir une matière…</option>
+                {SUBJECTS.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
             </div>
 
             <div>
