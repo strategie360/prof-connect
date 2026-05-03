@@ -69,8 +69,9 @@ export default async function ConversationPage({
   }
 
   return (
-    <div>
-      <div className="flex items-center gap-3 mb-4">
+    <div className="-mx-4 -my-6 flex flex-col" style={{ height: 'calc(100vh - 3.5rem)' }}>
+      {/* Header */}
+      <div className="flex items-center gap-3 px-4 py-3 flex-shrink-0 border-b border-slate-200 bg-white">
         <Link
           href="/messages"
           className="flex items-center justify-center w-8 h-8 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
@@ -90,13 +91,16 @@ export default async function ConversationPage({
         </div>
       </div>
 
-      <MessageThread
-        initialMessages={messages ?? []}
-        currentUserId={user.id}
-        otherUser={otherUser}
-        postId={postId ?? null}
-        sendMessage={sendMessage}
-      />
+      {/* Thread (flex-1 fills remaining height) */}
+      <div className="flex-1 overflow-hidden px-4">
+        <MessageThread
+          initialMessages={messages ?? []}
+          currentUserId={user.id}
+          otherUser={otherUser}
+          postId={postId ?? null}
+          sendMessage={sendMessage}
+        />
+      </div>
     </div>
   )
 }

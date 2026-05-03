@@ -1,9 +1,10 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
-import { ArrowLeft, MapPin, Calendar, Trash2, MessageSquare } from 'lucide-react'
+import { ArrowLeft, MapPin, Calendar, Trash2, MessageSquare, Pencil } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { type Post } from '@/lib/types'
 import { formatDate, getInitials } from '@/lib/utils'
+import { categoryColor } from '@/lib/categoryColor'
 
 export default async function PostPage({
   params,
@@ -51,19 +52,54 @@ export default async function PostPage({
 
       <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-6 mb-4">
         <div className="flex items-start justify-between gap-4 mb-4">
-          <h1 className="text-2xl font-semibold text-slate-900 leading-snug">
-            {post.title}
-          </h1>
+          <div className="flex-1 min-w-0">
+            <span
+              className={`inline-block px-2.5 py-0.5 text-xs font-medium rounded-full mb-2 ${
+                post.post_type === 'offre'
+                  ? 'bg-emerald-50 text-emerald-700'
+                  : 'bg-amber-50 text-amber-700'
+              }`}
+            >
+              {post.post_type === 'offre' ? '📢 Offre / Proposition' : '🔍 Demande / Recherche'}
+            </span>
+            <h1 className="text-2xl font-semibold text-slate-900 leading-snug mb-2">
+              {post.title}
+            </h1>
+            {post.category_names?.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {post.category_names.map((name) => {
+                  const color = categoryColor(name)
+                  return (
+                    <span
+                      key={name}
+                      className={`px-2 py-0.5 text-xs rounded font-medium ${color.bg} ${color.text}`}
+                    >
+                      {name}
+                    </span>
+                  )
+                })}
+              </div>
+            )}
+          </div>
           {isOwner && (
-            <form action={deletePost}>
-              <button
-                type="submit"
-                className="flex-shrink-0 flex items-center justify-center w-9 h-9 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-                title="Supprimer l'annonce"
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <Link
+                href={`/post/${id}/edit`}
+                className="flex items-center justify-center w-9 h-9 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                title="Modifier l'annonce"
               >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </form>
+                <Pencil className="w-4 h-4" />
+              </Link>
+              <form action={deletePost}>
+                <button
+                  type="submit"
+                  className="flex items-center justify-center w-9 h-9 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                  title="Supprimer l'annonce"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </form>
+            </div>
           )}
         </div>
 

@@ -1,15 +1,18 @@
 import Link from 'next/link'
+import { notFound, redirect } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
-import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { type Category } from '@/lib/types'
-import NewPostForm from '@/components/NewPostForm'
+import { type Post, type Category } from '@/lib/types'
+import EditPostForm from '@/components/EditPostForm'
 
-export default async function NewPostPage({
+export default async function EditPostPage({
+  params,
   searchParams,
 }: {
+  params: Promise<{ id: string }>
   searchParams: Promise<{ error?: string }>
 }) {
+  const { id } = await params
   const { error } = await searchParams
   const supabase = await createClient()
 
@@ -18,26 +21,29 @@ export default async function NewPostPage({
   } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: categories }, { data: profile }] = await Promise.all([
+  const [{ data: post }, { data: categories }, { data: profile }] = await Promise.all([
+    supabase.from('posts').select('*').eq('id', id).eq('author_id', user.id).single<Post>(),
     supabase.from('categories').select('*').order('post_count', { ascending: false }).returns<Category[]>(),
     supabase.from('profiles').select('role').eq('id', user.id).single(),
   ])
+
+  if (!post) notFound()
 
   const canCreateCategory = profile?.role === 'admin' || profile?.role === 'moderateur'
 
   return (
     <div>
       <Link
-        href="/"
+        href={`/post/${id}`}
         className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-900 mb-6"
       >
         <ArrowLeft className="w-4 h-4" />
-        Retour au fil
+        Retour à l&apos;annonce
       </Link>
 
-      <h1 className="text-xl font-semibold text-slate-900 mb-6">Nouvelle annonce</h1>
+      <h1 className="text-xl font-semibold text-slate-900 mb-6">Modifier l&apos;annonce</h1>
 
-      <NewPostForm categories={categories ?? []} error={error} canCreateCategory={canCreateCategory} />
+      <EditPostForm post={post} categories={categories ?? []} error={error} canCreateCategory={canCreateCategory} />
     </div>
   )
 }

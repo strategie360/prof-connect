@@ -81,7 +81,7 @@ export default function MessageThread({
   let lastDate = ''
 
   return (
-    <div className="flex flex-col h-[calc(100vh-8rem)]">
+    <div className="flex flex-col h-full">
       {/* Messages */}
       <div className="flex-1 overflow-y-auto py-4 space-y-1">
         {messages.map((msg) => {
@@ -125,7 +125,7 @@ export default function MessageThread({
       <form
         ref={formRef}
         onSubmit={handleSubmit}
-        className="flex items-end gap-2 pt-3 border-t border-slate-200"
+        className="flex items-end gap-2 pt-3 pb-4 border-t border-slate-200"
       >
         {postId && (
           <input type="hidden" name="post_id" value={postId} />
