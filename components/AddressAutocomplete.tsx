@@ -22,10 +22,21 @@ type SelectedGeo = {
   lng: number
 }
 
-export default function AddressAutocomplete() {
-  const [input, setInput] = useState('')
+type Props = {
+  initialAddress?: string
+  initialCity?: string
+  initialLat?: number | null
+  initialLng?: number | null
+}
+
+export default function AddressAutocomplete({ initialAddress, initialCity, initialLat, initialLng }: Props = {}) {
+  const [input, setInput] = useState(initialAddress ?? '')
   const [suggestions, setSuggestions] = useState<GeoFeature[]>([])
-  const [selected, setSelected] = useState<SelectedGeo | null>(null)
+  const [selected, setSelected] = useState<SelectedGeo | null>(
+    initialAddress && initialCity && initialLat && initialLng
+      ? { address: initialAddress, city: initialCity, lat: initialLat, lng: initialLng }
+      : null
+  )
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)

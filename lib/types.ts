@@ -1,3 +1,5 @@
+export type Role = 'admin' | 'moderateur' | 'user'
+
 export type Profile = {
   id: string
   email: string
@@ -6,6 +8,7 @@ export type Profile = {
   subject: string | null
   city: string | null
   bio: string | null
+  role: Role
   created_at: string
   updated_at: string
 }

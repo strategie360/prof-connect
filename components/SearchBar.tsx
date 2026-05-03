@@ -4,9 +4,10 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { useTransition, useRef, useState, useEffect } from 'react'
 import {
   Search, X, Map, MapPin, LocateFixed,
-  SlidersHorizontal, ChevronDown, ChevronUp,
+  SlidersHorizontal, ChevronDown, ChevronUp, Check,
 } from 'lucide-react'
 import type { Category } from '@/lib/types'
+import { categoryColor } from '@/lib/categoryColor'
 
 const RADIUS_OPTIONS = [5, 20, 50, 100]
 
@@ -23,14 +24,15 @@ export default function SearchBar({ categories }: Props) {
   const locationRef = useRef<HTMLDivElement>(null)
 
   const q = params.get('q') ?? ''
-  const activeCategory = params.get('category') ?? ''
+  const categoriesParam = params.get('categories') ?? ''
+  const activeCategories = categoriesParam ? categoriesParam.split(',').filter(Boolean) : []
   const sloc = params.get('sloc') ?? ''
   const slat = params.get('slat') ?? ''
   const slng = params.get('slng') ?? ''
   const activeRadius = params.get('radius') ?? ''
 
   const hasLocation = !!(slat && slng)
-  const advancedCount = (hasLocation ? 1 : 0) + (activeCategory ? 1 : 0)
+  const advancedCount = (hasLocation ? 1 : 0) + (activeCategories.length > 0 ? 1 : 0)
 
   const [locationInput, setLocationInput] = useState(sloc)
   const [suggestions, setSuggestions] = useState<Suggestion[]>([])
@@ -56,7 +58,15 @@ export default function SearchBar({ categories }: Props) {
       if (value) next.set(key, value)
       else next.delete(key)
     }
+    next.delete('page')
     startTransition(() => router.push(`${pathname}?${next.toString()}`))
+  }
+
+  function toggleCategory(name: string) {
+    const next = activeCategories.includes(name)
+      ? activeCategories.filter((c) => c !== name)
+      : [...activeCategories, name]
+    updateParams({ categories: next.length ? next.join(',') : null })
   }
 
   function handleSearch(value: string) {
@@ -96,12 +106,7 @@ export default function SearchBar({ categories }: Props) {
     setLocationInput(s.label)
     setSuggestions([])
     setShowSuggestions(false)
-    updateParams({
-      slat: String(s.lat),
-      slng: String(s.lng),
-      sloc: s.label,
-      radius: activeRadius || '20',
-    })
+    updateParams({ slat: String(s.lat), slng: String(s.lng), sloc: s.label, radius: activeRadius || '20' })
   }
 
   function clearLocation() {
@@ -112,10 +117,7 @@ export default function SearchBar({ categories }: Props) {
   }
 
   async function useMyLocation() {
-    if (!navigator.geolocation) {
-      setGeoError('Géolocalisation non disponible sur ce navigateur')
-      return
-    }
+    if (!navigator.geolocation) { setGeoError('Géolocalisation non disponible sur ce navigateur'); return }
     setIsLocating(true)
     setGeoError('')
     try {
@@ -125,21 +127,12 @@ export default function SearchBar({ categories }: Props) {
       const { latitude: lat, longitude: lng } = pos.coords
       let label = 'Ma position'
       try {
-        const res = await fetch(
-          `https://api-adresse.data.gouv.fr/reverse/?lon=${lng}&lat=${lat}`
-        )
+        const res = await fetch(`https://api-adresse.data.gouv.fr/reverse/?lon=${lng}&lat=${lat}`)
         const json = await res.json()
-        if (json.features[0]) {
-          label = json.features[0].properties.city ?? json.features[0].properties.label
-        }
+        if (json.features[0]) label = json.features[0].properties.city ?? json.features[0].properties.label
       } catch {}
       setLocationInput(label)
-      updateParams({
-        slat: String(lat),
-        slng: String(lng),
-        sloc: label,
-        radius: activeRadius || '20',
-      })
+      updateParams({ slat: String(lat), slng: String(lng), sloc: label, radius: activeRadius || '20' })
     } catch (err: unknown) {
       const code = (err as GeolocationPositionError)?.code
       setGeoError(code === 1 ? 'Localisation refusée' : 'Impossible de vous localiser')
@@ -152,10 +145,10 @@ export default function SearchBar({ categories }: Props) {
     setLocationInput('')
     setSuggestions([])
     setGeoError('')
-    updateParams({ q: null, category: null, slat: null, slng: null, sloc: null, radius: null })
+    updateParams({ q: null, categories: null, slat: null, slng: null, sloc: null, radius: null })
   }
 
-  const hasAnyFilter = !!(q || activeCategory || hasLocation)
+  const hasAnyFilter = !!(q || activeCategories.length || hasLocation)
 
   return (
     <div className="space-y-2 mb-6">
@@ -171,17 +164,13 @@ export default function SearchBar({ categories }: Props) {
             className="w-full border border-slate-300 rounded-lg pl-9 pr-9 py-2 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white"
           />
           {q && (
-            <button
-              type="button"
-              onClick={() => updateParams({ q: null })}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-            >
+            <button type="button" onClick={() => updateParams({ q: null })}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
               <X className="w-4 h-4" />
             </button>
           )}
         </div>
 
-        {/* Toggle filtres avancés */}
         <button
           type="button"
           onClick={() => setShowAdvanced((v) => !v)}
@@ -198,17 +187,11 @@ export default function SearchBar({ categories }: Props) {
               {advancedCount}
             </span>
           )}
-          {showAdvanced ? (
-            <ChevronUp className="w-3.5 h-3.5" />
-          ) : (
-            <ChevronDown className="w-3.5 h-3.5" />
-          )}
+          {showAdvanced ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
         </button>
 
-        <a
-          href="/map"
-          className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 hover:border-slate-400 rounded-lg transition-colors"
-        >
+        <a href="/map"
+          className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 hover:border-slate-400 rounded-lg transition-colors">
           <Map className="w-4 h-4" />
           <span className="hidden sm:inline">Carte</span>
         </a>
@@ -217,6 +200,55 @@ export default function SearchBar({ categories }: Props) {
       {/* Panneau filtres avancés */}
       {showAdvanced && (
         <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-4">
+
+          {/* Catégories — picklist multiple */}
+          {categories.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
+                  Catégories
+                </p>
+                {activeCategories.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => updateParams({ categories: null })}
+                    className="text-xs text-slate-400 hover:text-red-500 transition-colors"
+                  >
+                    Tout désélectionner
+                  </button>
+                )}
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                {categories.map((cat) => {
+                  const active = activeCategories.includes(cat.name)
+                  const color = categoryColor(cat.name)
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => toggleCategory(cat.name)}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-left transition-colors border ${
+                        active
+                          ? `${color.bg} ${color.text} border-transparent`
+                          : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+                      }`}
+                    >
+                      <span className={`flex-shrink-0 w-4 h-4 rounded border flex items-center justify-center ${
+                        active ? 'bg-current border-current' : 'border-slate-300'
+                      }`}>
+                        {active && <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />}
+                      </span>
+                      <span className="flex-1 truncate">{cat.name}</span>
+                      {cat.post_count > 0 && (
+                        <span className="flex-shrink-0 opacity-50">{cat.post_count}</span>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Localisation */}
           <div>
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">
@@ -234,11 +266,8 @@ export default function SearchBar({ categories }: Props) {
                   className="w-full border border-slate-300 rounded-lg pl-9 pr-8 py-2 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white"
                 />
                 {locationInput && (
-                  <button
-                    type="button"
-                    onClick={clearLocation}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                  >
+                  <button type="button" onClick={clearLocation}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
                     <X className="w-4 h-4" />
                   </button>
                 )}
@@ -246,11 +275,8 @@ export default function SearchBar({ categories }: Props) {
                   <ul className="absolute z-20 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-52 overflow-y-auto">
                     {suggestions.map((s) => (
                       <li key={s.label}>
-                        <button
-                          type="button"
-                          onMouseDown={() => selectLocation(s)}
-                          className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
-                        >
+                        <button type="button" onMouseDown={() => selectLocation(s)}
+                          className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2">
                           <MapPin className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
                           {s.label}
                         </button>
@@ -260,37 +286,25 @@ export default function SearchBar({ categories }: Props) {
                 )}
               </div>
 
-              {/* Bouton Ma position */}
-              <button
-                type="button"
-                onClick={useMyLocation}
-                disabled={isLocating}
-                className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 hover:border-blue-400 hover:text-blue-600 disabled:opacity-50 rounded-lg transition-colors whitespace-nowrap"
-              >
-                <LocateFixed
-                  className={`w-4 h-4 ${isLocating ? 'animate-pulse text-blue-500' : ''}`}
-                />
+              <button type="button" onClick={useMyLocation} disabled={isLocating}
+                className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 hover:border-blue-400 hover:text-blue-600 disabled:opacity-50 rounded-lg transition-colors whitespace-nowrap">
+                <LocateFixed className={`w-4 h-4 ${isLocating ? 'animate-pulse text-blue-500' : ''}`} />
                 {isLocating ? 'Localisation…' : 'Ma position'}
               </button>
             </div>
 
             {geoError && <p className="mt-1.5 text-xs text-red-500">{geoError}</p>}
 
-            {/* Rayon */}
             {hasLocation && (
               <div className="flex gap-1.5 items-center mt-3 flex-wrap">
                 <span className="text-xs text-slate-500">Dans un rayon de</span>
                 {RADIUS_OPTIONS.map((r) => (
-                  <button
-                    key={r}
-                    type="button"
-                    onClick={() => updateParams({ radius: String(r) })}
+                  <button key={r} type="button" onClick={() => updateParams({ radius: String(r) })}
                     className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
                       activeRadius === String(r)
                         ? 'bg-blue-600 text-white border-blue-600'
                         : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
-                    }`}
-                  >
+                    }`}>
                     {r} km
                   </button>
                 ))}
@@ -298,55 +312,10 @@ export default function SearchBar({ categories }: Props) {
             )}
           </div>
 
-          {/* Catégories */}
-          {categories.length > 0 && (
-            <div>
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">
-                Catégorie
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => updateParams({ category: null })}
-                  className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                    !activeCategory
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-white border border-slate-200 text-slate-600 hover:border-slate-300'
-                  }`}
-                >
-                  Toutes
-                </button>
-                {categories.map((cat) => (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() =>
-                      updateParams({ category: cat.name === activeCategory ? null : cat.name })
-                    }
-                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                      cat.name === activeCategory
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-white border border-slate-200 text-slate-600 hover:border-slate-300'
-                    }`}
-                  >
-                    {cat.name}
-                    {cat.post_count > 0 && (
-                      <span className="ml-1 opacity-60">{cat.post_count}</span>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Effacer tous les filtres */}
           {hasAnyFilter && (
             <div className="pt-2 border-t border-slate-200">
-              <button
-                type="button"
-                onClick={clearAllFilters}
-                className="text-xs font-medium text-slate-400 hover:text-red-500 transition-colors flex items-center gap-1"
-              >
+              <button type="button" onClick={clearAllFilters}
+                className="text-xs font-medium text-slate-400 hover:text-red-500 transition-colors flex items-center gap-1">
                 <X className="w-3.5 h-3.5" />
                 Effacer tous les filtres
               </button>

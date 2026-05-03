@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
-import { ArrowLeft, MapPin, Calendar, Trash2, MessageSquare } from 'lucide-react'
+import { ArrowLeft, MapPin, Calendar, Trash2, MessageSquare, Pencil } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { type Post } from '@/lib/types'
 import { formatDate, getInitials } from '@/lib/utils'
@@ -82,15 +82,24 @@ export default async function PostPage({
             )}
           </div>
           {isOwner && (
-            <form action={deletePost}>
-              <button
-                type="submit"
-                className="flex-shrink-0 flex items-center justify-center w-9 h-9 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-                title="Supprimer l'annonce"
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <Link
+                href={`/post/${id}/edit`}
+                className="flex items-center justify-center w-9 h-9 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                title="Modifier l'annonce"
               >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </form>
+                <Pencil className="w-4 h-4" />
+              </Link>
+              <form action={deletePost}>
+                <button
+                  type="submit"
+                  className="flex items-center justify-center w-9 h-9 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                  title="Supprimer l'annonce"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </form>
+            </div>
           )}
         </div>
 

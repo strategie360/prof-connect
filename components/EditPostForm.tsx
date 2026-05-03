@@ -3,23 +3,24 @@
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { Sparkles, Loader2, ChevronDown, ChevronUp, Check, X } from 'lucide-react'
-import { createPost } from '@/app/(app)/post/actions'
+import { updatePost } from '@/app/(app)/post/actions'
 import CategoryMultiSelect from './CategoryMultiSelect'
 import AddressAutocomplete from './AddressAutocomplete'
-import type { Category } from '@/lib/types'
+import type { Category, Post } from '@/lib/types'
 import type { PostAnalysis } from '@/app/api/analyze-post/route'
 
 type Props = {
+  post: Post
   categories: Category[]
   error?: string
   canCreateCategory?: boolean
 }
 
-export default function NewPostForm({ categories, error, canCreateCategory = false }: Props) {
+export default function EditPostForm({ post, categories, error, canCreateCategory = false }: Props) {
   const [isPending, startTransition] = useTransition()
-  const [postType, setPostType] = useState<'demande' | 'offre'>('demande')
-  const [title, setTitle] = useState('')
-  const [content, setContent] = useState('')
+  const [postType, setPostType] = useState<'demande' | 'offre'>(post.post_type)
+  const [title, setTitle] = useState(post.title)
+  const [content, setContent] = useState(post.content)
 
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [analyzeError, setAnalyzeError] = useState('')
@@ -62,7 +63,7 @@ export default function NewPostForm({ categories, error, canCreateCategory = fal
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
-    startTransition(() => createPost(formData))
+    startTransition(() => updatePost(post.id, formData))
   }
 
   const keyInfoEntries = analysis
@@ -75,7 +76,7 @@ export default function NewPostForm({ categories, error, canCreateCategory = fal
         <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
           {error === 'champs_requis'
             ? 'Le titre et la description sont requis.'
-            : 'Publication impossible, réessayez.'}
+            : 'Modification impossible, réessayez.'}
         </div>
       )}
 
@@ -160,7 +161,6 @@ export default function NewPostForm({ categories, error, canCreateCategory = fal
             </button>
           </div>
 
-          {/* Type suggéré */}
           <div className="flex items-center gap-2 text-purple-800">
             <Check className="w-3.5 h-3.5 text-purple-500 flex-shrink-0" />
             <span>Type détecté : <strong>{analysis.post_type === 'offre' ? 'Offre' : 'Demande'}</strong>
@@ -168,7 +168,6 @@ export default function NewPostForm({ categories, error, canCreateCategory = fal
             </span>
           </div>
 
-          {/* Catégories suggérées */}
           {analysis.categories.length > 0 && (
             <div className="flex items-start gap-2 text-purple-800">
               <Check className="w-3.5 h-3.5 text-purple-500 flex-shrink-0 mt-0.5" />
@@ -181,7 +180,6 @@ export default function NewPostForm({ categories, error, canCreateCategory = fal
             </div>
           )}
 
-          {/* Infos extraites */}
           {keyInfoEntries.length > 0 && (
             <div>
               <button type="button"
@@ -202,7 +200,6 @@ export default function NewPostForm({ categories, error, canCreateCategory = fal
             </div>
           )}
 
-          {/* Texte amélioré */}
           {analysis.has_improvement && (
             <div className="pt-2 border-t border-purple-200">
               <button type="button" onClick={applyImprovement}
@@ -225,6 +222,7 @@ export default function NewPostForm({ categories, error, canCreateCategory = fal
         </label>
         <CategoryMultiSelect
           categories={categories}
+          initialSelected={post.category_names ?? []}
           aiSuggestions={aiSuggestions}
           canCreateCategory={canCreateCategory}
         />
@@ -238,18 +236,23 @@ export default function NewPostForm({ categories, error, canCreateCategory = fal
             (optionnel — permet l&apos;affichage sur la carte)
           </span>
         </label>
-        <AddressAutocomplete />
+        <AddressAutocomplete
+          initialAddress={post.address ?? undefined}
+          initialCity={post.city ?? undefined}
+          initialLat={post.lat}
+          initialLng={post.lng}
+        />
       </div>
 
       {/* Actions */}
       <div className="flex gap-3 pt-1">
-        <Link href="/"
+        <Link href={`/post/${post.id}`}
           className="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">
           Annuler
         </Link>
         <button type="submit" disabled={isPending}
           className="px-6 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 rounded-lg transition-colors">
-          {isPending ? 'Publication…' : 'Publier'}
+          {isPending ? 'Enregistrement…' : 'Enregistrer'}
         </button>
       </div>
     </form>

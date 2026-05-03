@@ -75,6 +75,8 @@ export const SUBJECTS = [
 
 export type Subject = (typeof SUBJECTS)[number]
 
+export const MAX_CATEGORIES = 3
+
 // Catégories d'annonces (taxonomie fixe pour la recherche)
 export const POST_CATEGORIES = [
   'Cours & éducation',

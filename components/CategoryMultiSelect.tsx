@@ -4,30 +4,41 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { X, Plus } from 'lucide-react'
 import type { Category } from '@/lib/types'
 import { categoryColor } from '@/lib/categoryColor'
+import { MAX_CATEGORIES } from '@/lib/constants'
 
 export { categoryColor }
 
 type Props = {
   categories: Category[]
   aiSuggestions?: string[]
+  initialSelected?: string[]
+  canCreateCategory?: boolean
 }
 
 export default function CategoryMultiSelect({
   categories,
   aiSuggestions,
+  initialSelected,
+  canCreateCategory = false,
 }: Props) {
-  const [selected, setSelected] = useState<string[]>([])
+  const [selected, setSelected] = useState<string[]>(initialSelected ?? [])
+  // Noms qui viennent de l'IA — toujours upsertés côté serveur quel que soit le rôle
+  const [aiSourced, setAiSourced] = useState<Set<string>>(new Set())
   const [input, setInput] = useState('')
   const [open, setOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  // Ajoute les suggestions IA à la sélection si elles n'y sont pas encore
   useEffect(() => {
     if (!aiSuggestions?.length) return
     setSelected((prev) => {
       const toAdd = aiSuggestions.filter((s) => !prev.includes(s))
       return toAdd.length ? [...prev, ...toAdd] : prev
+    })
+    setAiSourced((prev) => {
+      const next = new Set(prev)
+      aiSuggestions.forEach((s) => next.add(s))
+      return next
     })
   }, [aiSuggestions]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -46,6 +57,7 @@ export default function CategoryMultiSelect({
       c.name.toLowerCase().includes(input.toLowerCase())
   )
   const showCreate =
+    canCreateCategory &&
     input.trim() &&
     !selected.includes(input.trim()) &&
     !categories.some(
@@ -53,19 +65,30 @@ export default function CategoryMultiSelect({
     )
 
   const add = useCallback((name: string) => {
-    setSelected((prev) => (prev.includes(name) ? prev : [...prev, name]))
+    setSelected((prev) => {
+      if (prev.includes(name) || prev.length >= MAX_CATEGORIES) return prev
+      return [...prev, name]
+    })
     setInput('')
     inputRef.current?.focus()
   }, [])
 
   function remove(name: string) {
     setSelected((prev) => prev.filter((s) => s !== name))
+    setAiSourced((prev) => { const next = new Set(prev); next.delete(name); return next })
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'Enter') {
       e.preventDefault()
-      if (input.trim()) add(input.trim())
+      const trimmed = input.trim()
+      if (trimmed) {
+        const match = categories.find(
+          (c) => c.name.toLowerCase() === trimmed.toLowerCase()
+        )
+        if (match) add(match.name)
+        else if (canCreateCategory) add(trimmed)
+      }
     }
     if (e.key === 'Backspace' && !input && selected.length > 0) {
       remove(selected[selected.length - 1])
@@ -108,25 +131,29 @@ export default function CategoryMultiSelect({
             </span>
           )
         })}
-        <input
-          ref={inputRef}
-          type="text"
-          value={input}
-          onChange={(e) => {
-            setInput(e.target.value)
-            setOpen(true)
-          }}
-          onFocus={() => setOpen(true)}
-          onKeyDown={handleKeyDown}
-          placeholder={
-            selected.length === 0 ? 'Ajouter des catégories…' : ''
-          }
-          className="flex-1 min-w-[140px] outline-none text-sm text-slate-900 placeholder:text-slate-400 bg-transparent py-0.5"
-        />
+        {selected.length < MAX_CATEGORIES ? (
+          <input
+            ref={inputRef}
+            type="text"
+            value={input}
+            onChange={(e) => {
+              setInput(e.target.value)
+              setOpen(true)
+            }}
+            onFocus={() => setOpen(true)}
+            onKeyDown={handleKeyDown}
+            placeholder={selected.length === 0 ? 'Ajouter des catégories…' : ''}
+            className="flex-1 min-w-[140px] outline-none text-sm text-slate-900 placeholder:text-slate-400 bg-transparent py-0.5"
+          />
+        ) : (
+          <span className="text-xs text-slate-400 ml-1">
+            Max {MAX_CATEGORIES} catégories
+          </span>
+        )}
       </div>
 
       {/* Dropdown */}
-      {open && (available.length > 0 || showCreate) && (
+      {open && selected.length < MAX_CATEGORIES && (available.length > 0 || showCreate) && (
         <ul className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-52 overflow-y-auto">
           {available.length > 0 && (
             <li className="px-3 py-1.5 text-xs text-slate-400 uppercase tracking-wide">
@@ -170,6 +197,12 @@ export default function CategoryMultiSelect({
       {selected.map((name, i) => (
         <input key={i} type="hidden" name="category_names" value={name} />
       ))}
+      {/* Catégories suggérées par l'IA — traitées séparément côté serveur */}
+      {selected
+        .filter((name) => aiSourced.has(name))
+        .map((name, i) => (
+          <input key={i} type="hidden" name="ai_category_names" value={name} />
+        ))}
     </div>
   )
 }

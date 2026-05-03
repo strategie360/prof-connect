@@ -17,7 +17,7 @@ export default async function FeedPage({
 }: {
   searchParams: Promise<{
     q?: string
-    category?: string
+    categories?: string
     slat?: string
     slng?: string
     sloc?: string
@@ -25,7 +25,8 @@ export default async function FeedPage({
     page?: string
   }>
 }) {
-  const { q, category, slat, slng, sloc, radius, page: pageParam } = await searchParams
+  const { q, categories: categoriesParam, slat, slng, sloc, radius, page: pageParam } = await searchParams
+  const selectedCategories = categoriesParam ? categoriesParam.split(',').filter(Boolean) : []
   const supabase = await createClient()
 
   const {
@@ -87,8 +88,9 @@ export default async function FeedPage({
         .from('posts')
         .select('*, profiles(id, full_name, academy, city)')
         .in('id', nearbyIds)
+        .neq('author_id', user.id)
       if (tsquery) q2 = q2.textSearch('search_vector', tsquery, { config: 'french' })
-      if (category) q2 = q2.contains('category_names', [category])
+      if (selectedCategories.length > 0) q2 = q2.overlaps('category_names', selectedCategories)
 
       const { data } = await q2.returns<Post[]>()
       posts = (data ?? [])
@@ -100,11 +102,12 @@ export default async function FeedPage({
     let query = supabase
       .from('posts')
       .select('*, profiles(id, full_name, academy, city)')
+      .neq('author_id', user.id)
       .order('created_at', { ascending: false })
       .limit(showCount + 1)
 
     if (tsquery) query = query.textSearch('search_vector', tsquery, { config: 'french' })
-    if (category) query = query.contains('category_names', [category])
+    if (selectedCategories.length > 0) query = query.overlaps('category_names', selectedCategories)
 
     const { data } = await query.returns<Post[]>()
     hasMore = (data?.length ?? 0) > showCount
@@ -114,14 +117,14 @@ export default async function FeedPage({
   // URL pour "Charger plus" — préserve tous les filtres actifs
   const loadMoreParams = new URLSearchParams()
   if (q) loadMoreParams.set('q', q)
-  if (category) loadMoreParams.set('category', category)
+  if (categoriesParam) loadMoreParams.set('categories', categoriesParam)
   if (slat) loadMoreParams.set('slat', slat)
   if (slng) loadMoreParams.set('slng', slng)
   if (sloc) loadMoreParams.set('sloc', sloc)
   if (radius) loadMoreParams.set('radius', radius)
   loadMoreParams.set('page', String(page + 1))
 
-  const hasFilters = !!(q || category || hasDistanceFilter)
+  const hasFilters = !!(q || selectedCategories.length || hasDistanceFilter)
 
   return (
     <div>
